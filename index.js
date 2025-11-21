@@ -27,8 +27,8 @@ async function run() {
     await client.connect();
    
     const db = client.db('HomeHero')
-    const servicesCollection = db.collection('Services')
-    const bookingsCollection = db.collection('Bookings')
+    const servicesCollection = db.collection('services')
+    const bookingsCollection = db.collection('bookings')
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
