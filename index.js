@@ -8,11 +8,8 @@ const port = process.env.port || 3000
 app.use(cors())
 app.use(express.json())
 
-
-
 const uri = process.env.MONGODB_URI
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -23,76 +20,143 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    
-    // await client.connect();
-   
+
     const db = client.db('HomeHero')
     const servicesCollection = db.collection('services')
     const bookingsCollection = db.collection('bookings')
 
-   app.get('/services', async (req,res)=>{
-    const result = await servicesCollection.find().toArray()
-    console.log(result)
-    res.send(result)
-   })
-
-   app.get('/services/:id', async(req,res)=>{
-    const {id} = req.params
-    console.log(id)
-    const result = await servicesCollection.findOne({_id:new ObjectId(id)})
-    res.send({
-      success:true,
-      result
-    })
-   })
-
-   app.get('/bookings', async (req, res) => {
-    const { userEmail } = req.query;
-    const bookings = await bookingsCollection.find({ userEmail }).toArray();
-    res.send(bookings);
-  });
-
-
-   app.post('/services', async(req,res)=>{
-    const data = req.body
-    console.log(data)
-    const result = await servicesCollection.insertOne(data)
-    console.log(result)
-    res.send(result)
-   })
-
-   app.post('/bookings', async (req, res) => {
-    const data = req.body;
-    console.log(data);
-
-    data.serviceId = new ObjectId(data.serviceId);
-
-    const result = await bookingsCollection.insertOne(data);
-    console.log(result);
-
-    res.send({
-      success: true,
-      result
+    // Get all services OR provider specific
+    app.get('/services', async (req, res) => {
+      try {
+        const { providerEmail } = req.query;
+        const filter = providerEmail ? { providerEmail } : {};
+        const result = await servicesCollection.find(filter).toArray();
+        res.send(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ success: false, error: 'Server error' });
+      }
     });
-  });
 
-  app.delete('/bookings/:id', async (req, res) => {
-  const { id } = req.params;
-  const result = await bookingsCollection.deleteOne({ _id: new ObjectId(id) });
-  res.send({ success: result.deletedCount > 0 });
-  });
+    // Get single service
+    app.get('/services/:id', async (req, res) => {
+      const { id } = req.params;
+      const result = await servicesCollection.findOne({ _id: new ObjectId(id) });
+      res.send({
+        success: true,
+        result
+      })
+    });
 
+    // Update service
+    app.put('/services/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const updateData = req.body;
+        const providerEmail = updateData.providerEmail;
 
+        if (!providerEmail) {
+          return res.status(400).send({ success: false, error: 'providerEmail required' });
+        }
+
+        const service = await servicesCollection.findOne({ _id: new ObjectId(id) });
+        if (!service) {
+          return res.status(404).send({ success: false, error: 'Service not found' });
+        }
+
+        if (service.providerEmail !== providerEmail) {
+          return res.status(403).send({ success: false, error: 'Not allowed to update this service' });
+        }
+
+        const result = await servicesCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updateData }
+        );
+
+        res.send({
+          success: true,
+          result
+        });
+
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ success: false, error: 'Server error' });
+      }
+    });
+
+    // Delete service
+    app.delete('/services/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { providerEmail } = req.query;
+
+        if (!providerEmail) {
+          return res.status(400).send({ success: false, error: 'providerEmail required' });
+        }
+
+        const service = await servicesCollection.findOne({ _id: new ObjectId(id) });
+        if (!service) {
+          return res.status(404).send({ success: false, error: 'Service not found' });
+        }
+
+        if (service.providerEmail !== providerEmail) {
+          return res.status(403).send({ success: false, error: 'Not allowed to delete this service' });
+        }
+
+        const result = await servicesCollection.deleteOne({ _id: new ObjectId(id) });
+
+        res.send({
+          success: result.deletedCount > 0
+        });
+
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ success: false, error: 'Server error' });
+      }
+    });
+
+    // Get bookings
+    app.get('/bookings', async (req, res) => {
+      const { userEmail } = req.query;
+      const bookings = await bookingsCollection.find({ userEmail }).toArray();
+      res.send(bookings);
+    });
+
+    // Add service
+    app.post('/services', async (req, res) => {
+      const data = req.body;
+      const result = await servicesCollection.insertOne(data);
+      res.send(result);
+    });
+
+    // Add booking
+    app.post('/bookings', async (req, res) => {
+      const data = req.body;
+      data.serviceId = new ObjectId(data.serviceId);
+
+      const result = await bookingsCollection.insertOne(data);
+
+      res.send({
+        success: true,
+        result
+      });
+    });
+
+    // Delete booking
+    app.delete('/bookings/:id', async (req, res) => {
+      const { id } = req.params;
+      const result = await bookingsCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send({ success: result.deletedCount > 0 });
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
+
   } finally {
-    // Ensures that the client will close when you finish/error
     // await client.close();
   }
 }
 run().catch(console.dir);
-
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
