@@ -26,17 +26,42 @@ async function run() {
     const bookingsCollection = db.collection('bookings')
 
     // Get all services OR provider specific
-    app.get('/services', async (req, res) => {
-      try {
-        const { providerEmail } = req.query;
-        const filter = providerEmail ? { providerEmail } : {};
-        const result = await servicesCollection.find(filter).toArray();
-        res.send(result);
-      } catch (err) {
-        console.error(err);
-        res.status(500).send({ success: false, error: 'Server error' });
+   app.get('/services', async (req, res) => {
+    try {
+      let { minPrice, maxPrice, providerEmail } = req.query;
+
+      const filter = {};
+
+      // Filter by provider email
+      if (providerEmail && providerEmail.trim() !== "") {
+        filter.Email = providerEmail; // match DB field
       }
-    });
+
+      // Filter by price using $gte and $lte
+      if ((minPrice && minPrice.trim() !== "") || (maxPrice && maxPrice.trim() !== "")) {
+        filter.Price = {}; // Price field must be a number
+
+        if (minPrice && minPrice.trim() !== "") {
+          filter.Price.$gte = Number(minPrice);
+        }
+
+        if (maxPrice && maxPrice.trim() !== "") {
+          filter.Price.$lte = Number(maxPrice);
+        }
+      }
+
+      const result = await servicesCollection.find(filter).toArray();
+      res.send(result);
+
+    } catch (error) {
+      console.error(error);
+      res.status(500).send({ success: false, error: 'Server error' });
+    }
+  });
+
+
+
+
 
     // Get single service
     app.get('/services/:id', async (req, res) => {
@@ -131,16 +156,29 @@ async function run() {
 
     // Add booking
     app.post('/bookings', async (req, res) => {
-      const data = req.body;
-      data.serviceId = new ObjectId(data.serviceId);
+    const data = req.body;
+    data.serviceId = new ObjectId(data.serviceId);
 
-      const result = await bookingsCollection.insertOne(data);
-
-      res.send({
-        success: true,
-        result
-      });
+    // Check duplicate booking
+    const exists = await bookingsCollection.findOne({
+      serviceId: data.serviceId,
+      userEmail: data.userEmail
     });
+
+    if (exists) {
+      return res.status(400).send({ success: false, error: "You already booked this service" });
+    }
+
+    // Check owner booking themselves
+    const service = await servicesCollection.findOne({ _id: data.serviceId });
+    if (service.providerEmail === data.userEmail) {
+      return res.status(400).send({ success: false, error: "Provider cannot book their own service" });
+    }
+
+    const result = await bookingsCollection.insertOne(data);
+    res.send({ success: true, result });
+  });
+
 
     // Delete booking
     app.delete('/bookings/:id', async (req, res) => {
