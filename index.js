@@ -60,6 +60,39 @@ async function run() {
   });
 
 
+  // Add review to a service
+  app.post('/services/:id/reviews', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rating, comment, userEmail } = req.body;
+
+      if (!rating || !userEmail) {
+        return res.status(400).send({ success: false, error: "Rating and userEmail are required" });
+      }
+
+      const service = await servicesCollection.findOne({ _id: new ObjectId(id) });
+      if (!service) {
+        return res.status(404).send({ success: false, error: "Service not found" });
+      }
+
+      const review = {
+        userEmail,
+        rating: Number(rating),
+        comment: comment || "",
+        date: new Date()
+      };
+
+      const result = await servicesCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $push: { reviews: review } }
+      );
+
+      res.send({ success: true, result, review });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({ success: false, error: "Server error" });
+    }
+  });
 
 
 
