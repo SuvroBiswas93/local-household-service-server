@@ -95,6 +95,23 @@ async function run() {
   });
 
 
+  // Top 6 rated services
+  app.get('/services/top-rated', async (req, res) => {
+    try {
+      const result = await servicesCollection
+        .find({ reviews: { $exists: true, $ne: [] } }) // Only services with reviews
+        .sort({ "reviews.rating": -1 }) // Sort by rating
+        .limit(6) // Top 6
+        .toArray();
+
+      res.send(result);
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({ success: false, error: 'Server error' });
+    }
+  });
+
+
 
     // Get single service
     app.get('/services/:id', async (req, res) => {
