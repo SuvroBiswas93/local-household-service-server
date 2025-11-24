@@ -39,7 +39,7 @@ async function run() {
 
       // Filter by price using $gte and $lte
       if ((minPrice && minPrice.trim() !== "") || (maxPrice && maxPrice.trim() !== "")) {
-        filter.Price = {}; // Price field must be a number
+        filter.Price = {}; 
 
         if (minPrice && minPrice.trim() !== "") {
           filter.Price.$gte = Number(minPrice);
@@ -78,7 +78,7 @@ async function run() {
       try {
         const { id } = req.params;
         const updateData = req.body;
-        const providerEmail = updateData.providerEmail;
+        const providerEmail = updateData.providerEmail || updateData.Email;
 
         if (!providerEmail) {
           return res.status(400).send({ success: false, error: 'providerEmail required' });
@@ -89,7 +89,7 @@ async function run() {
           return res.status(404).send({ success: false, error: 'Service not found' });
         }
 
-        if (service.providerEmail !== providerEmail) {
+        if (service.Email !== providerEmail) {
           return res.status(403).send({ success: false, error: 'Not allowed to update this service' });
         }
 
@@ -124,7 +124,7 @@ async function run() {
           return res.status(404).send({ success: false, error: 'Service not found' });
         }
 
-        if (service.providerEmail !== providerEmail) {
+        if (service.Email !== providerEmail) {
           return res.status(403).send({ success: false, error: 'Not allowed to delete this service' });
         }
 
