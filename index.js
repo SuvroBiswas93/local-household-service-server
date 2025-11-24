@@ -141,11 +141,19 @@ async function run() {
     });
 
     // Get bookings
-    app.get('/bookings', async (req, res) => {
+      app.get('/bookings', async (req, res) => {
       const { userEmail } = req.query;
-      const bookings = await bookingsCollection.find({ userEmail }).toArray();
+
+      let filter = {};
+
+      if (userEmail) {
+        filter.userEmail = userEmail;
+      }
+
+      const bookings = await bookingsCollection.find(filter).toArray();
       res.send(bookings);
     });
+
 
     // Add service
     app.post('/services', async (req, res) => {
