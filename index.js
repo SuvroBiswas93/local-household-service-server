@@ -95,13 +95,13 @@ async function run() {
   });
 
 
-  // Top 6 rated services
+  // Top 8 rated services
   app.get('/services/top-rated', async (req, res) => {
     try {
       const result = await servicesCollection
         .find({ reviews: { $exists: true, $ne: [] } }) // Only services with reviews
         .sort({ "reviews.rating": -1 }) // Sort by rating
-        .limit(6) // Top 6
+        .limit(8) // Top 8
         .toArray();
 
       res.send(result);
