@@ -96,7 +96,7 @@ async function run() {
 
 
   // Top 8 rated services
-  app.get('/services/top-rated', async (req, res) => {
+   app.get('/services/top-rated', async (req, res) => {
     try {
       const result = await servicesCollection
         .find({ reviews: { $exists: true, $ne: [] } }) // Only services with reviews
